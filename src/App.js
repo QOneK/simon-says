@@ -129,7 +129,6 @@ function App() {
 
     //States
     const [points, setPoints] = useState(0);
-    const [start, setStart] = useState(false);
     const [tiles, setTiles] = useState([]);
 
     //States for tiles
@@ -139,31 +138,15 @@ function App() {
 
     const [output, setOutput] = useState("");
 
-    /*
-    Objectives: 
-    a) find a way to skip inital render for useEffect (use console.log to prove it)
-    b) find out why simon says doesn't flash the last one
-    c) there is an error on the console regarding uncaught error in promse (likely async) 
-    d) look up the problem
-    */
     useEffect(() => {
-      if (start === false) {
-      } else {
-        TileSequence();
-      }
-    }, [start, points]);
+      setClicks([]);
+      setDisabled(true)
+      LightUp();
+    }, [tiles]);
 
-    console.log(tiles);
-
-    //onClick when "Start Game" button is pressed
-    function StartGame() {
-      setStart(true);
-    }
-
-    function TileSequence() {
+    function AddTile() {
       //generates random number from 0 to 3 (representing the tile numbers)
       let random = Math.floor(Math.random() * 4);
-      const tileSequence = [...tiles];
 
       if (random === 0) {
         random = "red";
@@ -174,16 +157,14 @@ function App() {
       } else if (random === 3) {
         random = "orange";
       }
-
-      tileSequence.push(random);
+      const tileSequence = [...tiles, random];
       setTiles(tileSequence);
-      LightUp();
     }
 
     async function LightUp() {
       setDisabled(true);
-      setClicks([]);
       for (let i = 0; i < tiles.length; i++) {
+        await timeout(500);
         let lights = [...light];
         if (tiles[i] === "red") {
           lights[0] = true;
@@ -199,65 +180,71 @@ function App() {
         lights = [...light];
         lights = [false, false, false, false];
         setLight(lights);
-        await timeout(500);
       }
       setDisabled(false);
     }
 
-    function ClickTile(color) {
-      let click = [...clicks, color];
-      setClicks(click);
-      Check();
-    }
-
-    function Check() {
-      //compare clicks and tiles
-      console.log("clicks.length", clicks.length);
-      console.log("tiles.length", tiles.length);
-
-      console.log("clicks: ", clicks);
+    function Check(color) {
+      let clicker = [...clicks, color];
+      setClicks(clicker);
+      console.log("clicker: ", clicker);
       console.log("tiles: ", tiles);
 
-      for (let i = 0; i < clicks.length; i++) {
-        if (clicks[i] === tiles[i]) {
-          continue;
-        } else {
-          setOutput("Game Over! You clicked the wrong wedge!");
+      if (clicker.length < tiles.length) {
+        for (let i = 0; i < clicker.length; i++) {
+          if (tiles[i] !== clicker[i]) {
+            setClicks([]);
+            setOutput("Game Over! You clicked the wrong wedge!");
+            setDisabled(true);
+          } 
         }
+      } else if (clicker.length > tiles.length){
+        setDisabled(true)
+      } else if (clicker.length === tiles.length){
+        for (let i = 0; i < clicker.length; i++) {
+          if (tiles[i] !== clicker[i]) {
+            setClicks([]);
+            setOutput("Game Over! You clicked the wrong wedge!");
+            setDisabled(true);
+          } 
+        }
+        setPoints(points => points + 1)
+        AddTile()
       }
-      setPoints((points) => points + 1);
     }
 
+    //AddTile()
     return (
       <div style={containerStyle} className="gameBoard">
         <div id="statusArea" className="status" style={instructionsStyle}>
           Points: <span>{points}</span>
         </div>
-        <h1>{output}</h1>
-        <button style={buttonStyle} onClick={StartGame}>
+        <h1>{clicks.length > 0 ? "Sequence so far: " + clicks.map((x) => x) : ""}</h1>
+        <h1>{output ? output : ""}</h1>
+        <button disabled={disabled} style={buttonStyle} onClick={AddTile}>
           Start Game
         </button>
         <div style={boardStyle}>
           <div style={{ display: "flex" }}>
             <button
-              onClick={() => ClickTile("red")}
+              onClick={() => Check("red")}
               disabled={disabled}
               style={light[0] ? redWedgeActive : redWedge}
             />
             <button
-              onClick={() => ClickTile("blue")}
+              onClick={() => Check("blue")}
               disabled={disabled}
               style={light[1] ? blueWedgeActive : blueWedge}
             />
           </div>
           <div style={{ display: "flex" }}>
             <button
-              onClick={() => ClickTile("green")}
+              onClick={() => Check("green")}
               disabled={disabled}
               style={light[2] ? greenWedgeActive : greenWedge}
             />
             <button
-              onClick={() => ClickTile("orange")}
+              onClick={() => Check("orange")}
               disabled={disabled}
               style={light[3] ? orangeWedgeActive : orangeWedge}
             />
